@@ -287,8 +287,8 @@ Returns Json consisting a list of events, starting by global organization-wide e
 | `endYmdAdd`   | String (nullable) | Immediate day after `endYmd` in YYYY-MM-DD format                                                                          |
 | `agentName`   | String (nullable) | Agent name (usually null for global events)                                                                                |
 | `allDay`      | Boolean           | Whether the vacation is a full-day or half-day                                                                             |
-| `staHm`       | String (nullable) | Start hour of the vacation (usually null for global events)                                                                |
-| `endHm`       | String (nullable) | End hour of the vacation (usually null for global events)                                                                  |
+| `staHm`       | String (nullable) | Start hour of the vacation in THHMMSS format (usually null for global events)                                              |
+| `endHm`       | String (nullable) | End hour of the vacation in THHMMSS format (usually null for global events)                                                |
 | `reqStatusCd` | String (nullable) | Status code indicating whether the request was approved or rejected                                                        |
 | `reason`      | String (nullable) | Reason for taking the vacation (null for global events)                                                                    |
 | `note`        | String (nullable) | Additional information written by requesters (null for global events)                                                      |

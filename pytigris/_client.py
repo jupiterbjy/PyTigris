@@ -4,6 +4,7 @@ Unofficial Tigris API Client
 :Author: jupiterbjy@gmail.com
 """
 
+import json
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import List
@@ -146,6 +147,9 @@ class TigrisClient:
                 ),
                 "multiLangCd": "ko",
             },
+            headers={
+                "Connection": "keep-alive",
+            },
         )
 
         try:
@@ -201,7 +205,7 @@ class TigrisClient:
         resp = await self.client.post(
             "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do",
             cookies={
-                "JSESSIONID": self._j_session_id,
+                # "JSESSIONID": self._j_session_id,
                 "colShowYn": "N",
                 "kiwiboxSaveChk": "true",
                 "menuShow": "Y",
@@ -220,10 +224,20 @@ class TigrisClient:
                 "Origin": "https://api.tigris5240.com",
                 "Sec-Ch-Ua": '"Microsoft Edge";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
                 "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
                 "Referer": "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do?cmd=viewTAADclzVcatnCldrMgr",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36",
                 "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Encoding": "gzip, deflate, br, zstd",
+                "Accept-Language": "ko,en;q=0.9,en-US;q=0.8",
+                "Dnt": "1",
                 "x-requested-with": "XMLHttpRequest",
+                "Connection": "keep-alive",
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache",
             },
         )
 
@@ -234,7 +248,9 @@ class TigrisClient:
             else:
                 resp.raise_for_status()
 
-            data = resp.json()
+            data = await resp.aread()
+            data = json.loads(data.decode("utf-8"))
+
             assert len(data["DATA"]), "DATA is empty"
 
         except httpx.HTTPError as err:

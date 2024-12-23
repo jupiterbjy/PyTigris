@@ -114,7 +114,7 @@ class CalendarEvent:
 
         if self.staHm:
             return datetime.strptime(
-                f"{self.staYmd} {self.staHm}", ymd_format + " %H:%M"
+                f"{self.staYmd} {self.staHm}", ymd_format + " T%H:%M:%S"
             )
 
         return datetime.strptime(self.staYmd, ymd_format)
@@ -127,7 +127,7 @@ class CalendarEvent:
 
         if self.endHm:
             return datetime.strptime(
-                f"{self.endYmd} {self.endHm}", ymd_format + " %H:%M"
+                f"{self.endYmd} {self.endHm}", ymd_format + " T%H:%M:%S"
             )
 
         return datetime.strptime(self.endYmd, ymd_format)

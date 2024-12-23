@@ -21,7 +21,7 @@ if __name__ == "__main__":
         await client.index()
         await client.cloud_sso_login()
 
-        start = datetime.fromisoformat("2024-12-01T00:00:00+09:00")
+        start = datetime.fromisoformat("2024-01-01T00:00:00+09:00")
         end = datetime.fromisoformat("2025-01-12T00:00:00+09:00")
 
         print(start.isoformat())
