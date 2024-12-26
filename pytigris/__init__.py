@@ -8,7 +8,7 @@ from ._client import *
 from ._types import *
 
 
-VERSION = "0.1a"
+__version__ = "0.1a"
 
 
 def _standalone_demo():
@@ -16,7 +16,7 @@ def _standalone_demo():
 
     import getpass
     from datetime import datetime
-    import trio
+    import asyncio
 
     _id, _pw = input("Email: "), getpass.getpass("Password: ")
 
@@ -42,7 +42,7 @@ def _standalone_demo():
         for event in events:
             print(f"{event.title} - {event.start_datetime} - {event.end_datetime}")
 
-    trio.run(_main)
+    asyncio.run(_main())
 
 
 if __name__ == "__main__":
