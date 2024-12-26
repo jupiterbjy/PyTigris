@@ -9,7 +9,31 @@ from functools import cached_property
 from typing import TypedDict, Optional
 
 
-__all__ = ["CalendarEventData", "CalendarEvent"]
+__all__ = [
+    "TigrisLoginError",
+    "TigrisUnexpectedError",
+    "TigrisCallError",
+    "CalendarEventData",
+    "CalendarEvent",
+]
+
+
+class TigrisLoginError(Exception):
+    """Tigris login error"""
+
+    pass
+
+
+class TigrisUnexpectedError(Exception):
+    """Tigris Cloud SSO login error"""
+
+    pass
+
+
+class TigrisCallError(Exception):
+    """Tigris call error"""
+
+    pass
 
 
 class CalendarEventData(TypedDict):

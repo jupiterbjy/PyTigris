@@ -6,30 +6,21 @@ Unofficial Tigris API Client
 
 import json
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 import httpx
 
-from ._types import CalendarEventData, CalendarEvent
+from ._types import (
+    CalendarEventData,
+    CalendarEvent,
+    TigrisCallError,
+    TigrisUnexpectedError,
+    TigrisLoginError,
+)
 
 
-class TigrisLoginError(Exception):
-    """Tigris login error"""
-
-    pass
-
-
-class TigrisCloudSSOError(Exception):
-    """Tigris Cloud SSO login error"""
-
-    pass
-
-
-class TigrisCallError(Exception):
-    """Tigris call error"""
-
-    pass
+__all__ = ["TigrisClient"]
 
 
 class TigrisClient:
@@ -57,44 +48,79 @@ class TigrisClient:
 
         # constant password - this does not change but will populate in runtime
         # for extra security
-        self._password_constant = ""
+        self._const_pw = ""
 
         self.client = httpx.AsyncClient()
         # no safe closing needed, we're not sending them anything
 
     @property
     def _j_session_id(self) -> str:
+        """Returns JSESSIONID cookie
+
+        Returns:
+            str: JSESSIONID cookie
+
+        Raises:
+            TigrisCallError: If JSESSIONID cookie not found
+        """
+
         try:
             return self.client.cookies["JSESSIONID"]
-        except KeyError:
-            return ""
+        except KeyError as err:
+            raise TigrisCallError(
+                "JSESSIONID cookie not found - Is user logged in?"
+            ) from err
 
     @property
     def _session_id(self) -> str:
+        """Returns _tigris_sid cookie
+
+        Returns:
+            str: _tigris_sid cookie
+
+        Raises:
+            TigrisCallError: If _tigris_sid cookie not found
+        """
+
         try:
             return self.client.cookies["_tigris_sid"]
-        except KeyError:
-            return ""
+        except KeyError as err:
+            raise TigrisCallError(
+                "_tigris_sid cookie not found - Is user logged in?"
+            ) from err
 
-    async def login(self) -> None:
+    async def login(
+        self, site_id_override="", email_override="", const_pw_override=""
+    ) -> None:
+        """Perform full login to Tigris
+
+        Args:
+            site_id_override (str, optional): Site ID. Set to override.
+            email_override (str, optional): Email. Set to override.
+            const_pw_override (str, optional): Constant Password for SSO. Set to override.
+
+        Raises:
+            TigrisLoginError: If login fails
+            TigrisUnexpectedError: If login fails in unexpected way
+        """
+
+        await self._initial_login()
+        await self._index()
+        await self.cloud_sso_login(site_id_override, email_override, const_pw_override)
+
+    async def _initial_login(self) -> None:
         """Logs in to Tigris
 
         Raises:
             TigrisLoginError: If login fails
+            TigrisUnexpectedError: If login fails in unexpected way
         """
 
         resp = await self.client.post(
             "https://www.tigrison.com/login",
             data={
-                "siteId": "",
-                "timeZoneId": self.tz,
-                "recaptchaToken": "",
                 "loginId": self._email,
                 "passwd": self._password,
-            },
-            headers={
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             },
         )
 
@@ -107,11 +133,11 @@ class TigrisClient:
                 raise TigrisLoginError(resp.json()["message"])
 
         except httpx.HTTPError as err:
-            raise TigrisLoginError(resp.reason_phrase) from err
+            raise TigrisUnexpectedError(resp.reason_phrase) from err
 
         self._site_id = data["data"]["siteId"]
 
-    async def index(self) -> None:
+    async def _index(self) -> None:
         """Perform index request to retrieve SSO password."""
 
         resp = await self.client.get(
@@ -119,55 +145,66 @@ class TigrisClient:
             cookies={"_tigris_sid": self._session_id},
         )
 
+        try:
+            resp.raise_for_status()
+
+        except httpx.HTTPError as err:
+            raise TigrisUnexpectedError(resp.reason_phrase) from err
+
         url = resp.json()["data"]
 
         # parse url and fetch loginPassword parameter
         parsed = urllib.parse.urlparse(url)
-        self._password_constant = urllib.parse.parse_qs(parsed.query)["loginPassword"][
-            0
-        ]
+        self._const_pw = urllib.parse.parse_qs(parsed.query)["loginPassword"][0]
 
-    async def cloud_sso_login(self, site_id="", email="", password="") -> None:
+    async def cloud_sso_login(
+        self, site_id_override="", email_override="", const_pw_override=""
+    ) -> None:
         """Perform Cloud SSO login.
 
         Args:
-            site_id (str, optional): Site ID. Set to override.
-            email (str, optional): Email. Set to override.
-            password (str, optional): Password. Set to override.
+            site_id_override (str, optional): Site ID. Set to override.
+            email_override (str, optional): Email. Set to override.
+            const_pw_override (str, optional): Constant Password for SSO. Set to override.
+
+        Raises:
+            TigrisLoginError: If login fails
+            TigrisUnexpectedError: If login fails in unexpected way
         """
 
         resp = await self.client.get(
             "https://api.tigris5240.com/cloudSsologinUser.do",
             params={
-                "siteId": self._site_id if site_id == "" else site_id,
-                "userMailId": self._email if email == "" else email,
-                "loginUserId": self._email if email == "" else email,
-                "loginPassword": (
-                    self._password_constant if password == "" else password
-                ),
-                "multiLangCd": "ko",
-            },
-            headers={
-                "Connection": "keep-alive",
+                "siteId": site_id_override or self._site_id,
+                "userMailId": email_override or self._email,
+                "loginUserId": email_override or self._email,
+                "loginPassword": const_pw_override or self._const_pw,
             },
         )
 
         try:
-            # check 302 first
+            # it could be redirection to main page or redirection to error page.
             if resp.status_code == 302:
                 assert (
                     "NoMatchingData.do" not in resp.next_request.url.path
                 ), "Contains NoMatchingData.do in url"
             else:
+                # otherwise not something we can handle
                 resp.raise_for_status()
 
         except httpx.HTTPError as err:
-            raise TigrisCloudSSOError(resp.reason_phrase) from err
+            raise TigrisUnexpectedError(resp.reason_phrase) from err
 
         except AssertionError as err:
-            raise TigrisCloudSSOError("Invalid login info") from err
+            raise TigrisLoginError("Invalid login info") from err
 
-    async def check_login(self) -> None:
+    async def _check_login(self) -> None:
+        """Used to check if client is logged in before calendar request.
+
+        Raises:
+            TigrisLoginError: If login check fails
+        """
+
         resp = await self.client.get(
             "https://api.tigris5240.com/chkLoginSession.do",
             cookies={
@@ -178,67 +215,99 @@ class TigrisClient:
         try:
             resp.raise_for_status()
 
+            # data should have "Login!" string if valid
             data = resp.json()
             assert data["loginInfo"] == "Login!", "Return value was not `Login!`"
 
         except httpx.HTTPError as err:
-            raise TigrisCloudSSOError(resp.reason_phrase) from err
+            raise TigrisLoginError(resp.reason_phrase) from err
 
         except AssertionError as err:
-            raise TigrisCloudSSOError("Invalid login info") from err
+            raise TigrisLoginError("Invalid login info - please login again") from err
+
+    async def _set_location_prog_cd_for_log(self) -> None:
+        """Set current menu location for unknown reason.
+        This is ABSOLUTELY NEEDED to get full event from calendar.
+        Otherwise, calendar will only return current logged-in user's teammates.
+
+        Raises:
+            TigrisCallError: If request fails due to invalid data or server error
+            TigrisUnexpectedError: If request fails in unexpected way
+        """
+
+        resp = await self.client.post(
+            "https://api.tigris5240.com/setLocationProgCdforLog.do",
+            cookies={
+                "JSESSIONID": self._j_session_id,
+            },
+            data={
+                "location": "직원 Self Service > 직원(SelfService) > 인사정보 > <span>휴가자조회(달력)  [ TAA-0370 ]</span>",
+                "progCd": "TAA-0370",
+                "menuCd": "100-0124",
+                "dataRwType": "R",
+            },
+        )
+
+        try:
+            resp.raise_for_status()
+
+        except httpx.HTTPError as err:
+            if resp.status_code == 500:
+                raise TigrisCallError(
+                    "Request is missing sufficient data or is an actual server error."
+                )
+
+            raise TigrisUnexpectedError(resp.reason_phrase) from err
 
     async def get_calendar(
-        self, start_date: datetime, end_date: datetime
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        search_org_cd: str = "",
+        org_search_type: str = "N",
+        search_pos_cd: str = "",
+        search_res_cd: str = "",
+        teammate_only: bool = False,
     ) -> List[CalendarEvent]:
         """Get calendar data
 
         Args:
             start_date: Fetch start datetime
             end_date: Fetch end datetime
+            search_org_cd: Search organization code
+            org_search_type: Search organization type(speculation)
+            search_pos_cd: Search position code
+            search_res_cd: Search responsibility code
+            teammate_only: Only fetch teammate's calendar if True
 
         Returns:
             List[CalendarEvent]: List of CalendarEvent
+
+        Raises:
+            TigrisCallError: If request fails due to invalid request
+            TigrisUnexpectedError: If request fails in unexpected way
         """
 
-        # await self.check_login()
+        if not teammate_only:
+            await self._check_login()
+            await self._set_location_prog_cd_for_log()
 
         resp = await self.client.post(
             "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do",
-            cookies={
-                # "JSESSIONID": self._j_session_id,
-                "colShowYn": "N",
-                "kiwiboxSaveChk": "true",
-                "menuShow": "Y",
-            },
             params={"cmd": "getTAADclzVcatnCldrMgr"},
             data={
                 "searchSYmd": start_date.isoformat(),
                 "searchEYmd": end_date.isoformat(),
-                "cmmSearchOrgCd": "",
-                "orgSearchType": "N",
-                "searchPosCd": "",
-                "searchResCd": "",
+                "cmmSearchOrgCd": search_org_cd,
+                "orgSearchType": org_search_type,
+                "searchPosCd": search_pos_cd,
+                "searchResCd": search_res_cd,
             },
             headers={
-                "Host": "api.tigris5240.com",
-                "Origin": "https://api.tigris5240.com",
-                "Sec-Ch-Ua": '"Microsoft Edge";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-origin",
-                "Referer": "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do?cmd=viewTAADclzVcatnCldrMgr",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Accept-Encoding": "gzip, deflate, br, zstd",
-                "Accept-Language": "ko,en;q=0.9,en-US;q=0.8",
-                "Dnt": "1",
-                "x-requested-with": "XMLHttpRequest",
-                "Connection": "keep-alive",
-                "Pragma": "no-cache",
-                "Cache-Control": "no-cache",
+                "Referer": "https://api.tigris5240.com/Main.do?result=",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             },
+            timeout=None,
         )
 
         try:
@@ -255,9 +324,10 @@ class TigrisClient:
 
         except httpx.HTTPError as err:
             # TODO: Change message for 302
-            raise TigrisCallError(resp.reason_phrase) from err
+            raise TigrisUnexpectedError(resp.reason_phrase) from err
 
         except AssertionError as err:
             raise TigrisCallError("Potentially invalid request cookies") from err
 
+        d: CalendarEventData
         return [CalendarEvent(d) for d in data["DATA"]]

@@ -1,5 +1,6 @@
 # Tigris API Reverse Engineering Memo
 
+Parameters that's commented out are optional for usecase here.
 
 ## Login
 
@@ -21,9 +22,9 @@ Normal login. Only used to get `siteId`.
   "method": "POST",
   "url": "https://www.tigrison.com/login",
   "body": {
-    "siteId": "",
-    "timeZoneId": "Asia/Seoul",
-    "recaptchaToken": "",
+//    "timeZoneId": "Asia/Seoul",
+//    "recaptchaToken": "",
+//    "siteId": "",
     "loginId": "{EMAIL}",
     "passwd": "{PASSWORD}"
   }
@@ -128,8 +129,7 @@ used for subsequent tigris API calls.
     "siteId": "{SITE_ID}",
     "userMailId": "{EMAIL}",
     "loginUserId": "{EMAIL}",
-    "loginPassword": "{HARDCODED_PASSWORD}",
-    "multiLangCd": "ko"
+    "loginPassword": "{HARDCODED_PASSWORD}"
   }
 }
 ```
@@ -182,17 +182,60 @@ TBD
 
 ---
 
+## Set Location Program Code for Log
+
+Seemingly used to set current menu location within site.
+
+This is **_ABSOLUTELY NEEDED_** to get full event from calendar.
+
+Without calling this first, calendar will only return current logged-in user's teammates.
+
+### Request
+
+```json
+{
+  "method": "POST",
+  "url": "https://api.tigris5240.com/setLocationProgramCode.do",
+  "cookies": {
+    "JSESSIONID": "{JSESSIONID}"
+  },
+  "data": {
+    "location": "직원 Self Service > 직원(SelfService) > 인사정보 > <span>휴가자조회(달력)  [ TAA-0370 ]</span>",
+    "progCd": "TAA-0370",
+    "menuCd": "100-0124",
+    "dataRwType": "R"
+  }
+}
+```
+
+### Success
+
+```json
+{
+    "success": "직원 Self Service > 직원(SelfService) > 인사정보 > <span>휴가자조회(달력)[TAA-0370]</span>"
+}
+```
+
+
+### Fail
+
+Returns HTTP 500
+
+---
+
 ## Fetch calendar data
 
 Returns a list of events. Unlike other requests, Referer header is absolutely required.
 
 ### Request
 
-- `searchSYmd`: start time in ISO 8601 format (`YYYY-MM-DDTHH:MM:SS+09:00`)
-- `searchEYmd`: end time in ISO 8601 format (`YYYY-MM-DDTHH:MM:SS+09:00`)
+| Parameter Name | Explanation                                                 |
+|----------------|-------------------------------------------------------------|
+| `searchSYmd`   | Start time in ISO 8601 format (`YYYY-MM-DDTHH:MM:SS+09:00`) |
+| `searchEYmd`   | End time in ISO 8601 format (`YYYY-MM-DDTHH:MM:SS+09:00`)   |
 
 If both query's format starts at 0 hour 0 min (i.e. 2025-01-12T00:00:00+09:00)
-this will include global events) events overlapping this time range.
+this will include global events that is overlapping this time range.
 
 If not, this will only give personal events matching logged-in user's team.
 
@@ -200,13 +243,15 @@ This call, when done by official site fetches all events in the time range regar
 
 How to enable this behavior is not yet known, no header or cookies seems to explain this.
 
+For this request, content-type header is absolutely required or it'll return empty structure with no event.
 
 ```json
 {
   "method": "POST",
   "url": "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do",
   "headers": {
-    "Referer": "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do?cmd=viewTAADclzVcatnCldrMgr"
+    "Referer": "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do?cmd=viewTAADclzVcatnCldrMgr",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
   },
   "cookies": {
     "JSESSIONID": "{SESSION_ID}",
@@ -226,6 +271,30 @@ How to enable this behavior is not yet known, no header or cookies seems to expl
     "searchResCd": ""
   }
 }
+```
+
+You could try this in browser with this with tigris site open:
+```javascript
+fetch(
+  "https://api.tigris5240.com/TAADclzVcatnCldrMgr.do?cmd=getTAADclzVcatnCldrMgr",
+  {
+    method: "POST",
+    body: new URLSearchParams({
+      searchSYmd: "2024-09-29T00:00:00+09:00",
+      searchEYmd: "2024-11-10T00:00:00+09:00",
+      cmmSearchOrgCd: "",
+      orgSearchType: "N",
+      searchPosCd: "",
+      searchResCd: ""
+    }).toString(),
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "Cookie": "kiwiboxSaveChk=true; menuShow=Y; colShowYn=N; JSESSIONID={JSESSIONID};",
+    }
+  }
+).then(res => res.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
 ```
 
 ### Success
@@ -294,12 +363,12 @@ Returns Json consisting a list of events, starting by global organization-wide e
 | `note`        | String (nullable) | Additional information written by requesters (null for global events)                                                      |
 
 
-### Fail (invalid header)
+### Fail (missing referer in header)
 
 Redirected to `http://api.tigris5240.com/Error.do?code=905`
 
 
-### Fail (invalid cookie)
+### Fail (invalid cookie / missing content-type header)
 
 Return empty data
 
@@ -313,7 +382,7 @@ Return empty data
 
 ---
 
-## Fetch Organization search count (??)
+## Fetch Organization search count
 
 ### Request
 

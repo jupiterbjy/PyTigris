@@ -8,31 +8,42 @@ from ._client import *
 from ._types import *
 
 
-if __name__ == "__main__":
-    # Test code
+VERSION = "0.1a"
+
+
+def _standalone_demo():
+    """Standalone demo. Used for module testing."""
+
     import getpass
     from datetime import datetime
     import trio
 
+    _id, _pw = input("Email: "), getpass.getpass("Password: ")
+
+    # noinspection PyProtectedMember
     async def _main():
-        client = TigrisClient(input("Email: "), getpass.getpass("Password: "))
+
+        client = TigrisClient(_id, _pw)
 
         await client.login()
-        await client.index()
-        await client.cloud_sso_login()
 
-        start = datetime.fromisoformat("2024-01-01T00:00:00+09:00")
+        print(client._site_id)
+        print(client._session_id)
+        print(client._const_pw)
+
+        start = datetime.fromisoformat("2024-11-01T00:00:00+09:00")
         end = datetime.fromisoformat("2025-01-12T00:00:00+09:00")
 
         print(start.isoformat())
         print(end.isoformat())
-        print(client._site_id)
-        print(client._session_id)
-        print(client._password_constant)
 
-        events = await client.get_calendar(start, end)
+        events = await client.get_calendar(start, end, teammate_only=False)
 
         for event in events:
             print(f"{event.title} - {event.start_datetime} - {event.end_datetime}")
 
     trio.run(_main)
+
+
+if __name__ == "__main__":
+    _standalone_demo()
