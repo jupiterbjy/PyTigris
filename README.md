@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 import pytz
 import trio
-# also support asyncio as httpx supports it
+# also support asyncio, trio is not installed by default
 
 from pytigris import TigrisClient
 

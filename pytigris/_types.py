@@ -1,5 +1,6 @@
 """
-Data Type definitions for type hinting
+Data Type definitions for type hinting.
+This naming follows the original API's naming, thus it's not PEP8 compliant
 
 :Author: jupiterbjy@gmail.com
 """

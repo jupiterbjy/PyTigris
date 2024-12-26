@@ -42,6 +42,8 @@ class TigrisClient:
 
         self.tz = tz
 
+        # it really doesn't matter for race conditions so let's keep it simple
+
         # WARNING - DO NOT LEAK SITE ID
         # THAT IS ONLY THING SEEMINGLY HOLDING ENTIRE TIGRIS SECURITY
         self._site_id = ""
