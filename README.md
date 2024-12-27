@@ -1,8 +1,10 @@
-# PyTigris5240
+# PyTigris
 
-Very rough unofficial client for www.tigrison.com without much(actually just calendar) feature.
+Very rough unofficial client for www.tigrison.com without much(actually just calendar)
+feature for some kind of automation.
 
-Refer reverse-engineering memo in [API_MEMO.md](https://github.com/jupiterbjy/pytigris/blob/master/API_MEMO.md) for internal details.
+Refer reverse-engineering memo in [API_MEMO.md](https://github.com/jupiterbjy/pytigris/blob/master/API_MEMO.md)
+for internal details.
 
 
 ## Usage
