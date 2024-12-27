@@ -4,7 +4,9 @@ Unofficial Tigris API Client
 :Author: jupiterbjy@gmail.com
 """
 
+import base64
 import json
+import random
 import urllib.parse
 from datetime import datetime
 from typing import List
@@ -20,7 +22,28 @@ from ._types import (
 )
 
 
+# --- Globals ---
+
 __all__ = ["TigrisClient"]
+
+# Used to at least not expose string in plain text
+_SALT = str(random.randint(0, 32767))
+
+
+# --- Utilities ---
+
+
+def _mangle(s: str) -> str:
+    """Just bare minimum to mangle strings so it doesn't at least expose raw string"""
+    return base64.b64encode((s + _SALT).encode("utf-8")).decode("utf-8")
+
+
+def _unmangle(s: str) -> str:
+    """unmangle mangled string"""
+    return base64.b64decode(s.encode("utf-8")).decode("utf-8").removesuffix(_SALT)
+
+
+# --- Classes ---
 
 
 class TigrisClient:
@@ -37,8 +60,8 @@ class TigrisClient:
             tz (str, optional): Timezone. Defaults to "Asia/Seoul".
         """
 
-        self._email = email
-        self._password = password
+        self._email = _mangle(email)
+        self._password = _mangle(password)
 
         self.tz = tz
 
@@ -121,8 +144,8 @@ class TigrisClient:
         resp = await self.client.post(
             "https://www.tigrison.com/login",
             data={
-                "loginId": self._email,
-                "passwd": self._password,
+                "loginId": _unmangle(self._email),
+                "passwd": _unmangle(self._password),
             },
         )
 
@@ -137,7 +160,7 @@ class TigrisClient:
         except httpx.HTTPError as err:
             raise TigrisUnexpectedError(resp.reason_phrase) from err
 
-        self._site_id = data["data"]["siteId"]
+        self._site_id = _mangle(data["data"]["siteId"])
 
     async def _index(self) -> None:
         """Perform index request to retrieve SSO password."""
@@ -157,7 +180,9 @@ class TigrisClient:
 
         # parse url and fetch loginPassword parameter
         parsed = urllib.parse.urlparse(url)
-        self._const_pw = urllib.parse.parse_qs(parsed.query)["loginPassword"][0]
+        self._const_pw = _mangle(
+            urllib.parse.parse_qs(parsed.query)["loginPassword"][0]
+        )
 
     async def cloud_sso_login(
         self, site_id_override="", email_override="", const_pw_override=""
@@ -174,13 +199,28 @@ class TigrisClient:
             TigrisUnexpectedError: If login fails in unexpected way
         """
 
+        # fail fast
+        try:
+            assert (
+                self._const_pw or const_pw_override
+            ), "Missing constant password - Either pass it or login first."
+            assert (
+                self._site_id or site_id_override
+            ), "Missing site ID - Either pass it or login first."
+            assert (
+                self._email or email_override
+            ), "Missing email - Either pass it or login first."
+        except AssertionError as err:
+            raise TigrisLoginError(err.args[0]) from err
+
+        # fetch
         resp = await self.client.get(
             "https://api.tigris5240.com/cloudSsologinUser.do",
             params={
-                "siteId": site_id_override or self._site_id,
-                "userMailId": email_override or self._email,
-                "loginUserId": email_override or self._email,
-                "loginPassword": const_pw_override or self._const_pw,
+                "siteId": site_id_override or _unmangle(self._site_id),
+                "userMailId": email_override or _unmangle(self._email),
+                "loginUserId": email_override or _unmangle(self._email),
+                "loginPassword": const_pw_override or _unmangle(self._const_pw),
             },
         )
 

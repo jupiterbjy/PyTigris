@@ -8,7 +8,7 @@ from ._client import *
 from ._types import *
 
 
-__version__ = "0.1a"
+__version__ = "0.2a"
 
 
 def _standalone_demo():
