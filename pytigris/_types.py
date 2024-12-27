@@ -75,30 +75,30 @@ class CalendarEvent:
     """Class representing a calendar event
 
     Attributes:
-        tz: The timezone of the event provided by TigrisClient
-        kind: The type of event (e.g. "holiday", "meeting", etc.)
-        title: The title of the event
-        leavNm: The name of the person or organization associated with the event
-        leavCd: The code or ID of the person or organization associated with the event
-        personInfo: Additional information about the person or organization associated with the event
-        orgCd: The code or ID of the organization associated with the event
-        orgNm: The name of the organization associated with the event
-        posCd: The code or ID of the position or role associated with the event
-        posNm: The name of the position or role associated with the event
-        resCd: The code or ID of the resource associated with the event
-        resNm: The name of the resource associated with the event
-        wktypeCd: The type of work or activity associated with the event
-        wktypeNm: The name of the work or activity associated with the event
-        staYmd: The start date of the event in YYYY-MM-DD format
-        endYmd: The end date of the event in YYYY-MM-DD format
-        endYmdAdd: Immediate day after endYmd in YYYY-MM-DD format. Not sure what this is for.
-        agentName: The name of the agent or person responsible for the event
-        allDay: Whether the event is an all-day event
-        staHm: The start time of the event
-        endHm: The end time of the event
-        reqStatusCd: The status of the event request
-        reason: The reason for the event
-        note: Additional notes or comments about the event
+        tz: pytz.BaseTzInfo, The timezone of the event provided by TigrisClient
+        kind: str, The type of event. `vacation` usually
+        title: str, Title of the event. Has (△) sign if it's not approved yet
+        leave_name: str, Name of the vacation in Korean
+        leave_code: int, Unique identifier for the vacation type
+        person_info: str, Information about the person responsible in `{orgNm}/{resNm}/{posNm}/{wktypeNm}` format. set to `///` if it's global vacation
+        organization_code: Optional[str], Organizational code
+        organization_name: Optional[str], Organizational name
+        position_code: Optional[str], Position code
+        position_name: Optional[str], Position name
+        responsibility_code: Optional[str], Responsibility code
+        responsibility_name: Optional[str], Responsibility name (i.e. team leader)
+        work_type_code: Optional[str], Work type code
+        work_type_name: Optional[str], Work type name
+        start_year_month_day: str, Start date of the vacation in YYYY-MM-DD format, else YYYYMMDD format
+        end_year_month_day: str, End date of the vacation in YYYY-MM-DD format if personal, else YYYYMMDD format
+        end_ymd_add: Optional[str], Immediate day after `endYmd` in YYYY-MM-DD format
+        agent_name: Optional[str], Agent name
+        is_full_day: bool, Whether the vacation is a full-day or half-day
+        start_hour_minute: Optional[str], Start hour of the vacation in THHMMSS format
+        end_hour_minute: Optional[str], End hour of the vacation in THHMMSS format
+        request_status_code: Optional[str], Status code indicating whether the request was approved or rejected
+        reason: Optional[str], Reason for taking the vacation
+        note: Optional[str], Additional information written by requesters
     """
 
     def __init__(self, data: CalendarEventData, tz: pytz.BaseTzInfo):
@@ -106,27 +106,27 @@ class CalendarEvent:
         self._src_data = data
         self.kind = data["kind"]
         self.title = data["title"]
-        self.leavNm = data["leavNm"]
-        self.leavCd = data["leavCd"]
-        self.personInfo = data["personInfo"]
-        self.orgCd = data["orgCd"]
-        self.orgNm = data["orgNm"]
-        self.posCd = data["posCd"]
-        self.posNm = data["posNm"]
-        self.resCd = data["resCd"]
-        self.resNm = data["resNm"]
-        self.wktypeCd = data["wktypeCd"]
-        self.wktypeNm = data["wktypeNm"]
-        self.staYmd = data["staYmd"]
-        self.endYmd = data["endYmd"]
-        self.endYmdAdd = data["endYmdAdd"]
-        self.agentName = data["agentName"]
-        self.allDay = data["allDay"]
-        self.staHm = data["staHm"]
-        self.endHm = data["endHm"]
-        self.reqStatusCd = data["reqStatusCd"]
-        self.reason = data["reason"]
-        self.note = data["note"]
+        self.leave_name = data["leavNm"]
+        self.leave_code = data["leavCd"]
+        self.person_info = data["personInfo"]
+        self.organization_code: Optional[str] = data["orgCd"]
+        self.organization_name: Optional[str] = data["orgNm"]
+        self.position_code: Optional[str] = data["posCd"]
+        self.position_name: Optional[str] = data["posNm"]
+        self.responsibility_code: Optional[str] = data["resCd"]
+        self.responsibility_name: Optional[str] = data["resNm"]
+        self.work_type_code: Optional[str] = data["wktypeCd"]
+        self.work_type_name: Optional[str] = data["wktypeNm"]
+        self.start_year_month_day: str = data["staYmd"]
+        self.end_year_month_day: str = data["endYmd"]
+        self.end_ymd_add: Optional[str] = data["endYmdAdd"]
+        self.agent_name: Optional[str] = data["agentName"]
+        self.is_full_day: bool = data["allDay"] == "true"
+        self.start_hour_minute: Optional[str] = data["staHm"]
+        self.end_hour_minute: Optional[str] = data["endHm"]
+        self.request_status_code: Optional[str] = data["reqStatusCd"]
+        self.reason: Optional[str] = data["reason"]
+        self.note: Optional[str] = data["note"]
 
     @cached_property
     def name(self) -> str:
@@ -142,7 +142,7 @@ class CalendarEvent:
         """Returns true if event is global (i.e. holiday)"""
 
         # global events has YYYYMMDD while non-global events has YYYY-MM-DD
-        return len(self.staYmd) == 8
+        return len(self.start_year_month_day) == 8
 
     @cached_property
     def start_datetime(self) -> datetime:
@@ -150,9 +150,12 @@ class CalendarEvent:
 
         ymd_format = "%Y%m%d" if self.is_global else "%Y-%m-%d"
         dt = (
-            datetime.strptime(f"{self.staYmd} {self.staHm}", ymd_format + " T%H:%M:%S")
-            if self.staHm
-            else datetime.strptime(self.staYmd, ymd_format)
+            datetime.strptime(
+                f"{self.start_year_month_day} {self.start_hour_minute}",
+                ymd_format + " T%H:%M:%S",
+            )
+            if self.start_hour_minute
+            else datetime.strptime(self.start_year_month_day, ymd_format)
         )
         return self.tz.localize(dt)
 
@@ -162,18 +165,33 @@ class CalendarEvent:
 
         ymd_format = "%Y%m%d" if self.is_global else "%Y-%m-%d"
         dt = (
-            datetime.strptime(f"{self.endYmd} {self.endHm}", ymd_format + " T%H:%M:%S")
-            if self.endHm
-            else datetime.strptime(self.endYmd, ymd_format)
+            datetime.strptime(
+                f"{self.end_year_month_day} {self.end_hour_minute}",
+                ymd_format + " T%H:%M:%S",
+            )
+            if self.end_hour_minute
+            else datetime.strptime(self.end_year_month_day, ymd_format)
         )
 
         return self.tz.localize(dt)
+
+    def __contains__(self, item: datetime) -> bool:
+        """Checks if the CalendarEvent object contains the given datetime.
+
+        Args:
+            item: date to check
+
+        Returns:
+            True if the CalendarEvent object contains the given datetime, False otherwise
+        """
+
+        return self.start_datetime <= item <= self.end_datetime
 
     def __str__(self):
         """
         Return a string representation of the CalendarEvent object.
         """
-        return f"CalendarEvent(title='{self.title}', start='{self.staYmd}', end='{self.endYmd}')"
+        return f"CalendarEvent(title='{self.title}', start='{self.start_year_month_day}', end='{self.end_year_month_day}')"
 
     def to_dict(self) -> CalendarEventData:
         """

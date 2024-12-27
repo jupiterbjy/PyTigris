@@ -336,31 +336,31 @@ Returns Json consisting a list of events, starting by global organization-wide e
 ```
 
 
-| Key Name      | Data Type         | Explanation (Speculation)                                                                                                  |
-|---------------|-------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `kind`        | String            | The type of event. `vacation` usually                                                                                      |
-| `title`       | String            | Title of the event. Has (△) sign if it's not approved yet                                                                  |
-| `leavNm`      | String            | Name of the vacation in Korean                                                                                             |
-| `leavCd`      | Integer           | Unique identifier for the vacation type                                                                                    |
-| `personInfo`  | String            | Information about the person responsible in `{orgNm}{resNm}{posNm}{wktypeNm}` format. set to `///` if it's global vacation |
-| `orgCd`       | String (nullable) | Organizational code (usually null for global events)                                                                       |
-| `orgNm`       | String (nullable) | Organizational name                                                                                                        |
-| `posCd`       | String (nullable) | Position code (usually null for global events)                                                                             |
-| `posNm`       | String (nullable) | Position name                                                                                                              |
-| `resCd`       | String (nullable) | Resignation code (usually null for global events)                                                                          |
-| `resNm`       | String (nullable) | Resignation name                                                                                                           |
-| `wktypeCd`    | String (nullable) | Work type code                                                                                                             |
-| `wktypeNm`    | String (nullable) | Work type name                                                                                                             |
-| `staYmd`      | String            | Start date of the vacation in YYYY-MM-DD format, else YYYYMMDD format.                                                     |
-| `endYmd`      | String            | End date of the vacation in YYYY-MM-DD format if personal, else YYYYMMDD format.                                           |
-| `endYmdAdd`   | String (nullable) | Immediate day after `endYmd` in YYYY-MM-DD format                                                                          |
-| `agentName`   | String (nullable) | Agent name (usually null for global events)                                                                                |
-| `allDay`      | Boolean           | Whether the vacation is a full-day or half-day                                                                             |
-| `staHm`       | String (nullable) | Start hour of the vacation in THHMMSS format (usually null for global events)                                              |
-| `endHm`       | String (nullable) | End hour of the vacation in THHMMSS format (usually null for global events)                                                |
-| `reqStatusCd` | String (nullable) | Status code indicating whether the request was approved or rejected                                                        |
-| `reason`      | String (nullable) | Reason for taking the vacation (null for global events)                                                                    |
-| `note`        | String (nullable) | Additional information written by requesters (null for global events)                                                      |
+| Key Name      | Data Type         | Explanation (Speculation)                                                                                                     |
+|---------------|-------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `kind`        | String            | The type of event. `vacation` usually                                                                                         |
+| `title`       | String            | Title of the event. Has (△) sign if it's not approved yet                                                                     |
+| `leavNm`      | String            | Name of the vacation in Korean                                                                                                |
+| `leavCd`      | Integer           | Unique identifier for the vacation type                                                                                       |
+| `personInfo`  | String            | Information about the person responsible in `{orgNm}/{resNm}/{posNm}/{wktypeNm}` format. set to `///` if it's global vacation |
+| `orgCd`       | String (nullable) | Organizational code                                                                                                           |
+| `orgNm`       | String (nullable) | Organizational name                                                                                                           |
+| `posCd`       | String (nullable) | Position code                                                                                                                 |
+| `posNm`       | String (nullable) | Position name                                                                                                                 |
+| `resCd`       | String (nullable) | Responsibility code                                                                                                           |
+| `resNm`       | String (nullable) | Responsibility name (i.e. team leader)                                                                                        |
+| `wktypeCd`    | String (nullable) | Work type code                                                                                                                |
+| `wktypeNm`    | String (nullable) | Work type name                                                                                                                |
+| `staYmd`      | String            | Start date of the vacation in YYYY-MM-DD format, else YYYYMMDD format.                                                        |
+| `endYmd`      | String            | End date of the vacation in YYYY-MM-DD format if personal, else YYYYMMDD format.                                              |
+| `endYmdAdd`   | String (nullable) | Immediate day after `endYmd` in YYYY-MM-DD format                                                                             |
+| `agentName`   | String (nullable) | Agent name                                                                                                                    |
+| `allDay`      | Boolean           | Whether the vacation is a full-day or half-day                                                                                |
+| `staHm`       | String (nullable) | Start hour of the vacation in THHMMSS format                                                                                  |
+| `endHm`       | String (nullable) | End hour of the vacation in THHMMSS format                                                                                    |
+| `reqStatusCd` | String (nullable) | Status code indicating whether the request was approved or rejected                                                           |
+| `reason`      | String (nullable) | Reason for taking the vacation                                                                                                |
+| `note`        | String (nullable) | Additional information written by requesters                                                                                  |
 
 
 ### Fail (missing referer in header)
