@@ -9,6 +9,7 @@ import re
 
 
 _VERSION_RE = re.compile(r"__version__ = ['\"]([^'\"]+)['\"]")
+_MODULE_BLACKLIST = {"setuptools", "wheel"}
 
 setup(
     name="pytigris",
@@ -26,6 +27,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.10",
-    install_requires=open("requirements.txt").read().splitlines(),
+    install_requires=[
+        module
+        for module in open("requirements.txt").read().splitlines()
+        if module not in _MODULE_BLACKLIST
+    ],
     extras_require={"trio": ["trio"]},
 )

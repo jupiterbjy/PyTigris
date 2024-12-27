@@ -18,6 +18,8 @@ __all__ = [
     "CalendarEvent",
 ]
 
+import pytz
+
 
 class TigrisLoginError(Exception):
     """Tigris login error"""
@@ -73,6 +75,7 @@ class CalendarEvent:
     """Class representing a calendar event
 
     Attributes:
+        tz: The timezone of the event provided by TigrisClient
         kind: The type of event (e.g. "holiday", "meeting", etc.)
         title: The title of the event
         leavNm: The name of the person or organization associated with the event
@@ -98,7 +101,8 @@ class CalendarEvent:
         note: Additional notes or comments about the event
     """
 
-    def __init__(self, data: CalendarEventData):
+    def __init__(self, data: CalendarEventData, tz: pytz.BaseTzInfo):
+        self.tz = tz
         self._src_data = data
         self.kind = data["kind"]
         self.title = data["title"]
@@ -125,6 +129,15 @@ class CalendarEvent:
         self.note = data["note"]
 
     @cached_property
+    def name(self) -> str:
+        """Returns the name section of the event"""
+
+        if self.is_global:
+            return self.title.strip()
+
+        return self.title.split("-")[0]
+
+    @cached_property
     def is_global(self) -> bool:
         """Returns true if event is global (i.e. holiday)"""
 
@@ -136,26 +149,25 @@ class CalendarEvent:
         """Return event's start time as datetime."""
 
         ymd_format = "%Y%m%d" if self.is_global else "%Y-%m-%d"
-
-        if self.staHm:
-            return datetime.strptime(
-                f"{self.staYmd} {self.staHm}", ymd_format + " T%H:%M:%S"
-            )
-
-        return datetime.strptime(self.staYmd, ymd_format)
+        dt = (
+            datetime.strptime(f"{self.staYmd} {self.staHm}", ymd_format + " T%H:%M:%S")
+            if self.staHm
+            else datetime.strptime(self.staYmd, ymd_format)
+        )
+        return self.tz.localize(dt)
 
     @cached_property
     def end_datetime(self) -> datetime:
         """Return event's end time as datetime."""
 
         ymd_format = "%Y%m%d" if self.is_global else "%Y-%m-%d"
+        dt = (
+            datetime.strptime(f"{self.endYmd} {self.endHm}", ymd_format + " T%H:%M:%S")
+            if self.endHm
+            else datetime.strptime(self.endYmd, ymd_format)
+        )
 
-        if self.endHm:
-            return datetime.strptime(
-                f"{self.endYmd} {self.endHm}", ymd_format + " T%H:%M:%S"
-            )
-
-        return datetime.strptime(self.endYmd, ymd_format)
+        return self.tz.localize(dt)
 
     def __str__(self):
         """
@@ -167,6 +179,7 @@ class CalendarEvent:
         """
         Convert the CalendarEvent object to a CalendarEventData dictionary.
 
-        :return: A CalendarEventData dictionary containing event data.
+        Returns:
+             A CalendarEventData dictionary containing event data.
         """
         return self._src_data

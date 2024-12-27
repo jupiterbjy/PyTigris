@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import List
 
 import httpx
+import pytz
 
 from ._types import (
     CalendarEventData,
@@ -63,7 +64,7 @@ class TigrisClient:
         self._email = _mangle(email)
         self._password = _mangle(password)
 
-        self.tz = tz
+        self.tz = pytz.timezone(tz)
 
         # it really doesn't matter for race conditions so let's keep it simple
 
@@ -372,4 +373,4 @@ class TigrisClient:
             raise TigrisCallError("Potentially invalid request cookies") from err
 
         d: CalendarEventData
-        return [CalendarEvent(d) for d in data["DATA"]]
+        return [CalendarEvent(d, self.tz) for d in data["DATA"]]
