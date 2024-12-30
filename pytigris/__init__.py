@@ -8,7 +8,7 @@ from ._client import *
 from ._types import *
 
 
-__version__ = "0.3a"
+__version__ = "0.3b"
 
 
 def _standalone_demo():
@@ -40,7 +40,7 @@ def _standalone_demo():
         events = await client.get_calendar(start, end, teammate_only=False)
 
         for event in events:
-            print(f"{event.title} - {event.start_datetime} - {event.end_datetime}")
+            print(f"{event.name} - {event.start_datetime} - {event.end_datetime}")
 
     asyncio.run(_main())
 

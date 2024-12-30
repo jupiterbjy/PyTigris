@@ -135,7 +135,7 @@ class CalendarEvent:
         if self.is_global:
             return self.title.strip()
 
-        return self.title.split("-")[0]
+        return self.title.split("-")[0].removeprefix("(△)")
 
     @cached_property
     def is_global(self) -> bool:
